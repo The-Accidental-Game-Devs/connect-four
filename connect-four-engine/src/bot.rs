@@ -51,7 +51,7 @@ fn minmax(
     if maximizing {
         let mut max_eval = f32::NEG_INFINITY;
         for col in 0..COLS {
-            if can_pace(game_board, col) {
+            if can_place(game_board, col) {
                 let next_row = get_next_row(game_board, col);
                 let new_game_board = game_board | next_row;
                 let new_bot_board = bot_board ^ next_row;
@@ -77,7 +77,7 @@ fn minmax(
     } else {
         let mut min_eval = f32::INFINITY;
         for col in 0..COLS {
-            if can_pace(game_board, col) {
+            if can_place(game_board, col) {
                 let next_row = get_next_row(game_board, col);
                 let new_game_board = game_board | next_row;
                 let new_player_board = player_board ^ next_row;
@@ -112,7 +112,7 @@ pub fn find_best_move(
     let best_move = (0..COLS)
         .into_par_iter()
         .filter_map(|col| {
-            if can_pace(game_board, col) {
+            if can_place(game_board, col) {
                 let next_row = get_next_row(game_board, col);
                 let new_game_board = game_board | next_row;
                 let new_bot_board = bot_board ^ next_row;

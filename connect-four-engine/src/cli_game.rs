@@ -57,7 +57,7 @@ pub fn player_vs_bot(depth: usize) {
                     }
                 };
 
-                if can_pace(game_board, player_input) {
+                if can_place(game_board, player_input) {
                     let next_row = get_next_row(game_board, player_input);
                     game_board |= next_row;
                     player_board ^= next_row;

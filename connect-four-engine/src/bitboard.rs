@@ -35,7 +35,7 @@ pub fn indices_from_bitmask(bitboard: Bitboard) -> Option<(usize, usize)> {
     None
 }
 
-pub fn can_pace(bitboard: Bitboard, col: usize) -> bool {
+pub fn can_place(bitboard: Bitboard, col: usize) -> bool {
     if col >= COLS {
         return false;
     }
@@ -145,13 +145,13 @@ mod tests {
     }
 
     #[test]
-    fn test_can_pace() {
+    fn test_can_place() {
         let bitboard_a: Bitboard = 0;
-        let result_a = can_pace(bitboard_a, 0);
+        let result_a = can_place(bitboard_a, 0);
         assert_eq!(result_a, true);
 
         let bitboard_b: Bitboard = 0b111111_0_000000;
-        let result_b = can_pace(bitboard_b, 1);
+        let result_b = can_place(bitboard_b, 1);
         assert_eq!(result_b, false);
     }
 
