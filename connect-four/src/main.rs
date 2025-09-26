@@ -2,6 +2,7 @@ mod assets;
 mod states;
 
 use bevy::prelude::*;
+use bevy::window::EnabledButtons;
 use assets::Assets;
 use states::AppState;
 
@@ -13,6 +14,12 @@ fn main() {
                 title: "Connect Four".into(),
                 name: Some("Connect Four".into()),
                 resolution: (1280.0, 720.0).into(),
+                resizable: false,
+                enabled_buttons: EnabledButtons {
+                    minimize: true,
+                    maximize: false,
+                    close: true,
+                },
                 ..default()
             }),
             ..default()
