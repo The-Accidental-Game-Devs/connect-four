@@ -4,5 +4,11 @@ use bevy::prelude::States;
 pub enum AppState {
     #[default]
     Loading,
-    InGame,
+    SetupGame,
+    WhoTurn,
+    PlayerInput,
+    BotInput,
+    IsGameOver,
+    GameOver,
+    Replay,
 }

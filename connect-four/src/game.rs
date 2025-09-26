@@ -1,16 +1,323 @@
 use crate::assets::Assets;
+use crate::settings::*;
 use crate::states::AppState;
 use bevy::prelude::*;
+use connect_four_engine::bitboard::*;
+use connect_four_engine::bot::find_best_move;
+
+#[derive(Resource)]
+struct GameData {
+    game_board: Bitboard,
+    player_board: Bitboard,
+    bot_board: Bitboard,
+    player_turn: bool,
+}
+
+#[derive(PartialEq)]
+enum Result {
+    PlayerWon,
+    BotWon,
+    Draw,
+    Unknow,
+}
+
+#[derive(Resource)]
+struct GameResult {
+    result: Result,
+}
+
+#[derive(Component)]
+struct ActivePiece {
+    col: usize,
+}
+
+#[derive(Component)]
+struct Piece {}
+
+#[derive(Component)]
+struct GameOverText {}
 
 pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(AppState::InGame), setup);
-
+        app.add_systems(OnEnter(AppState::SetupGame), setup);
+        app.add_systems(OnEnter(AppState::WhoTurn), check_who_turn);
+        app.add_systems(
+            Update,
+            handle_player_move_input.run_if(in_state(AppState::PlayerInput)),
+        );
+        app.add_systems(
+            Update,
+            handle_player_drop_input.run_if(in_state(AppState::PlayerInput)),
+        );
+        app.add_systems(OnEnter(AppState::BotInput), handle_bot_input);
+        app.add_systems(OnEnter(AppState::IsGameOver), check_is_game_over);
+        app.add_systems(OnEnter(AppState::GameOver), display_game_over_text);
+        app.add_systems(
+            Update,
+            handle_replay_input.run_if(in_state(AppState::GameOver)),
+        );
+        app.add_systems(OnExit(AppState::GameOver), remove_game_over_text);
+        app.add_systems(OnEnter(AppState::Replay), handle_replay);
     }
 }
 
-fn setup(mut commands: Commands, assets: Res<Assets>) {
+fn setup(mut commands: Commands, assets: Res<Assets>, mut next_state: ResMut<NextState<AppState>>) {
+    commands.insert_resource(GameData {
+        game_board: 0,
+        player_board: 0,
+        bot_board: 0,
+        player_turn: true,
+    });
+    commands.insert_resource(GameResult {
+        result: Result::Unknow,
+    });
     commands.spawn(Sprite::from_image(assets.board.clone()));
+    commands.spawn((
+        ActivePiece { col: 3 },
+        Sprite::from_image(assets.yellow_piece.clone()),
+        Transform::from_xyz(0.0, HALF_BOARD_HEIGHT + HALF_PIECE_SIZE, 0.0),
+    ));
+    commands
+        .spawn((Node {
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            align_items: AlignItems::End,
+            justify_content: JustifyContent::Center,
+            ..default()
+        },))
+        .with_children(|parent| {
+            parent.spawn((
+                Text::new("Press A|D to move left|right, Press Space to place piece"),
+                TextColor(Color::BLACK),
+                TextFont {
+                    font_size: 16.0,
+                    ..default()
+                },
+            ));
+        });
+    next_state.set(AppState::WhoTurn);
+}
+
+fn check_who_turn(mut game_data: ResMut<GameData>, mut next_state: ResMut<NextState<AppState>>) {
+    if game_data.player_turn {
+        next_state.set(AppState::PlayerInput);
+        game_data.player_turn = !game_data.player_turn;
+    } else {
+        next_state.set(AppState::BotInput);
+        game_data.player_turn = !game_data.player_turn;
+    }
+}
+
+fn handle_player_move_input(
+    mut query: Query<(&mut ActivePiece, &mut Transform)>,
+    keys: Res<ButtonInput<KeyCode>>,
+) {
+    if let Ok((mut active_piece, mut transform)) = query.single_mut() {
+        if keys.just_pressed(KeyCode::KeyD) {
+            if active_piece.col < COLS - 1 {
+                active_piece.col += 1;
+                transform.translation.x =
+                    active_piece.col as f32 * PIECE_SIZE - HALF_BOARD_WIDTH + HALF_PIECE_SIZE;
+            }
+        }
+        if keys.just_pressed(KeyCode::KeyA) {
+            if active_piece.col > 0 {
+                active_piece.col -= 1;
+                transform.translation.x =
+                    active_piece.col as f32 * PIECE_SIZE - HALF_BOARD_WIDTH + HALF_PIECE_SIZE;
+            }
+        }
+    }
+}
+
+fn handle_player_drop_input(
+    mut commands: Commands,
+    query: Query<&ActivePiece>,
+    keys: Res<ButtonInput<KeyCode>>,
+    mut game_data: ResMut<GameData>,
+    mut game_result: ResMut<GameResult>,
+    assets: Res<Assets>,
+    mut next_state: ResMut<NextState<AppState>>,
+) {
+    if let Ok(active_piece) = query.single() {
+        if keys.just_pressed(KeyCode::Space) {
+            if can_place(game_data.game_board, active_piece.col) {
+                let next_row = get_next_row(game_data.game_board, active_piece.col);
+                game_data.game_board |= next_row;
+                game_data.player_board ^= next_row;
+
+                let Some((row, col)) = indices_from_bitmask(next_row) else {
+                    game_result.result = Result::Unknow;
+                    next_state.set(AppState::GameOver);
+                    return;
+                };
+
+                let x = col as f32 * PIECE_SIZE - HALF_BOARD_WIDTH + HALF_PIECE_SIZE;
+                let y = row as f32 * PIECE_SIZE - HALF_BOARD_HEIGHT + HALF_PIECE_SIZE;
+
+                commands.spawn((
+                    Piece {},
+                    Sprite::from_image(assets.yellow_piece.clone()),
+                    Transform::from_xyz(x, y, -1.0),
+                ));
+
+                next_state.set(AppState::IsGameOver);
+            }
+        }
+    }
+}
+
+fn handle_bot_input(
+    mut commands: Commands,
+    mut game_data: ResMut<GameData>,
+    mut game_result: ResMut<GameResult>,
+    assets: Res<Assets>,
+    mut next_state: ResMut<NextState<AppState>>,
+) {
+    let Some(best_move) = find_best_move(
+        game_data.game_board,
+        game_data.player_board,
+        game_data.bot_board,
+        8,
+    ) else {
+        game_result.result = Result::Unknow;
+        next_state.set(AppState::GameOver);
+        return;
+    };
+
+    let next_row = get_next_row(game_data.game_board, best_move);
+    game_data.game_board |= next_row;
+    game_data.bot_board ^= next_row;
+
+    let Some((row, col)) = indices_from_bitmask(next_row) else {
+        game_result.result = Result::Unknow;
+        next_state.set(AppState::GameOver);
+        return;
+    };
+
+    let x = col as f32 * PIECE_SIZE - HALF_BOARD_WIDTH + HALF_PIECE_SIZE;
+    let y = row as f32 * PIECE_SIZE - HALF_BOARD_HEIGHT + HALF_PIECE_SIZE;
+
+    commands.spawn((
+        Piece {},
+        Sprite::from_image(assets.red_piece.clone()),
+        Transform::from_xyz(x, y, -1.0),
+    ));
+
+    next_state.set(AppState::IsGameOver);
+}
+
+fn check_is_game_over(
+    game_data: Res<GameData>,
+    mut game_result: ResMut<GameResult>,
+    mut next_state: ResMut<NextState<AppState>>,
+) {
+    if has_won(game_data.player_board) {
+        game_result.result = Result::PlayerWon;
+        next_state.set(AppState::GameOver);
+        return;
+    }
+
+    if has_won(game_data.bot_board) {
+        game_result.result = Result::BotWon;
+        next_state.set(AppState::GameOver);
+        return;
+    }
+
+    if is_board_full(game_data.game_board) {
+        game_result.result = Result::Draw;
+        next_state.set(AppState::GameOver);
+        return;
+    }
+
+    next_state.set(AppState::WhoTurn);
+}
+
+fn display_game_over_text(mut commands: Commands, game_result: Res<GameResult>) {
+    let game_over_text = match game_result.result {
+        Result::PlayerWon => "Player Won!",
+        Result::BotWon => "Bot Won!",
+        Result::Draw => "Draw.",
+        Result::Unknow => "Something want wrong.",
+    };
+
+    commands
+        .spawn((
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                flex_direction: FlexDirection::Column,
+                ..default()
+            },
+            GameOverText {},
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                Text::new(game_over_text),
+                TextColor(Color::BLACK),
+                TextFont {
+                    font_size: 64.0,
+                    ..default()
+                },
+            ));
+            parent.spawn((
+                Text::new("Press space to play again."),
+                TextColor(Color::BLACK),
+                TextFont {
+                    font_size: 32.0,
+                    ..default()
+                },
+            ));
+        });
+}
+
+fn handle_replay_input(
+    keys: Res<ButtonInput<KeyCode>>,
+    mut next_state: ResMut<NextState<AppState>>,
+) {
+    if keys.just_pressed(KeyCode::Space) {
+        next_state.set(AppState::Replay);
+    }
+}
+
+fn remove_game_over_text(mut commands: Commands, query: Query<Entity, With<GameOverText>>) {
+    if let Ok(game_over_text) = query.single() {
+        commands.entity(game_over_text).despawn();
+    }
+}
+
+fn handle_replay(
+    mut commands: Commands,
+    query: Query<Entity, With<Piece>>,
+    mut game_data: ResMut<GameData>,
+    mut game_result: ResMut<GameResult>,
+    mut next_state: ResMut<NextState<AppState>>,
+) {
+    for piece in query {
+        commands.entity(piece).despawn();
+    }
+
+    let player_turn = match game_result.result {
+        Result::PlayerWon => false,
+        Result::BotWon => true,
+        Result::Draw => game_data.player_turn,
+        Result::Unknow => true,
+    };
+
+    *game_data = GameData {
+        game_board: 0,
+        player_board: 0,
+        bot_board: 0,
+        player_turn: player_turn,
+    };
+
+    *game_result = GameResult {
+        result: Result::Unknow,
+    };
+
+    next_state.set(AppState::WhoTurn);
 }

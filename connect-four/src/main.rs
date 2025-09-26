@@ -1,5 +1,6 @@
 mod assets;
 mod game;
+mod settings;
 mod states;
 
 use assets::Assets;
@@ -60,6 +61,6 @@ fn check_assets_loaded(
         && assets_server.is_loaded_with_dependencies(&assets.red_piece)
         && assets_server.is_loaded_with_dependencies(&assets.yellow_piece)
     {
-        next_state.set(AppState::InGame);
+        next_state.set(AppState::SetupGame);
     }
 }
