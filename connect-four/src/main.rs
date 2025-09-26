@@ -1,9 +1,9 @@
 mod assets;
 mod states;
 
+use assets::Assets;
 use bevy::prelude::*;
 use bevy::window::EnabledButtons;
-use assets::Assets;
 use states::AppState;
 
 fn main() {
