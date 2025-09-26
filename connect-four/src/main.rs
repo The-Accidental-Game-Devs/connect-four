@@ -1,29 +1,34 @@
 mod assets;
+mod game;
 mod states;
 
 use assets::Assets;
 use bevy::prelude::*;
 use bevy::window::EnabledButtons;
+use game::GamePlugin;
 use states::AppState;
 
 fn main() {
     App::new()
         .insert_resource(ClearColor(Color::srgb(1.0, 1.0, 1.0)))
-        .add_plugins((DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "Connect Four".into(),
-                name: Some("Connect Four".into()),
-                resolution: (1280.0, 720.0).into(),
-                resizable: false,
-                enabled_buttons: EnabledButtons {
-                    minimize: true,
-                    maximize: false,
-                    close: true,
-                },
+        .add_plugins((
+            DefaultPlugins.set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: "Connect Four".into(),
+                    name: Some("Connect Four".into()),
+                    resolution: (1280.0, 720.0).into(),
+                    resizable: false,
+                    enabled_buttons: EnabledButtons {
+                        minimize: true,
+                        maximize: false,
+                        close: true,
+                    },
+                    ..default()
+                }),
                 ..default()
             }),
-            ..default()
-        }),))
+            GamePlugin,
+        ))
         .insert_state(AppState::Loading)
         .add_systems(Startup, setup)
         .add_systems(Startup, load_assets)
