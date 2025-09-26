@@ -1,0 +1,7 @@
+[package]
+name = "connect-four"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+connect-four-engine = {path = "../connect-four-engine"}
