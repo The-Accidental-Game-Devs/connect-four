@@ -1,3 +1,5 @@
+use connect_four_engine::cli_game::player_vs_bot;
+
 fn main() {
-    println!("Hello, world!");
+    player_vs_bot(8);
 }
