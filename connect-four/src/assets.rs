@@ -5,6 +5,7 @@ use bevy::prelude::Resource;
 #[derive(Resource)]
 pub struct Assets {
     pub board: Handle<Image>,
+    pub board_border: Handle<Image>,
     pub red_piece: Handle<Image>,
     pub yellow_piece: Handle<Image>,
 }

@@ -85,6 +85,7 @@ fn setup(mut commands: Commands, assets: Res<Assets>, mut next_state: ResMut<Nex
         result: Result::Unknow,
     });
     commands.spawn(Sprite::from_image(assets.board.clone()));
+    commands.spawn(Sprite::from_image(assets.board_border.clone()));
     commands.spawn((
         ActivePiece { col: 3 },
         Sprite::from_image(assets.yellow_piece.clone()),

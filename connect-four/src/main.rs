@@ -47,6 +47,7 @@ fn setup(mut commands: Commands) {
 fn load_assets(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(Assets {
         board: asset_server.load("board.png"),
+        board_border: asset_server.load("board_border.png"),
         red_piece: asset_server.load("red_piece.png"),
         yellow_piece: asset_server.load("yellow_piece.png"),
     });
@@ -58,6 +59,7 @@ fn check_assets_loaded(
     mut next_state: ResMut<NextState<AppState>>,
 ) {
     if assets_server.is_loaded_with_dependencies(&assets.board)
+        && assets_server.is_loaded_with_dependencies(&assets.board_border)
         && assets_server.is_loaded_with_dependencies(&assets.red_piece)
         && assets_server.is_loaded_with_dependencies(&assets.yellow_piece)
     {
