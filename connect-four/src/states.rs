@@ -8,6 +8,7 @@ pub enum AppState {
     WhoTurn,
     PlayerInput,
     BotInput,
+    SimulateGravity,
     IsGameOver,
     GameOver,
     Replay,

@@ -35,6 +35,11 @@ struct ActivePiece {
 struct Piece {}
 
 #[derive(Component)]
+struct Falling {
+    end_position: Transform,
+}
+
+#[derive(Component)]
 struct GameOverText {}
 
 pub struct GamePlugin;
@@ -47,11 +52,17 @@ impl Plugin for GamePlugin {
             Update,
             handle_player_move_input.run_if(in_state(AppState::PlayerInput)),
         );
+        app.add_systems(OnEnter(AppState::PlayerInput), unhide_active_piece);
         app.add_systems(
             Update,
             handle_player_drop_input.run_if(in_state(AppState::PlayerInput)),
         );
+        app.add_systems(OnExit(AppState::PlayerInput), hide_active_piece);
         app.add_systems(OnEnter(AppState::BotInput), handle_bot_input);
+        app.add_systems(
+            Update,
+            simulate_gravity.run_if(in_state(AppState::SimulateGravity)),
+        );
         app.add_systems(OnEnter(AppState::IsGameOver), check_is_game_over);
         app.add_systems(OnEnter(AppState::GameOver), display_game_over_text);
         app.add_systems(
@@ -78,6 +89,7 @@ fn setup(mut commands: Commands, assets: Res<Assets>, mut next_state: ResMut<Nex
         ActivePiece { col: 3 },
         Sprite::from_image(assets.yellow_piece.clone()),
         Transform::from_xyz(0.0, HALF_BOARD_HEIGHT + HALF_PIECE_SIZE, 0.0),
+        Visibility::Visible,
     ));
     commands
         .spawn((Node {
@@ -132,16 +144,22 @@ fn handle_player_move_input(
     }
 }
 
+fn unhide_active_piece(mut query: Query<&mut Visibility, With<ActivePiece>>) {
+    if let Ok(mut visibility) = query.single_mut() {
+        *visibility = Visibility::Visible;
+    }
+}
+
 fn handle_player_drop_input(
     mut commands: Commands,
-    query: Query<&ActivePiece>,
+    query: Query<(&ActivePiece, &Transform)>,
     keys: Res<ButtonInput<KeyCode>>,
     mut game_data: ResMut<GameData>,
     mut game_result: ResMut<GameResult>,
     assets: Res<Assets>,
     mut next_state: ResMut<NextState<AppState>>,
 ) {
-    if let Ok(active_piece) = query.single() {
+    if let Ok((active_piece, transform)) = query.single() {
         if keys.just_pressed(KeyCode::Space) {
             if can_place(game_data.game_board, active_piece.col) {
                 let next_row = get_next_row(game_data.game_board, active_piece.col);
@@ -159,13 +177,22 @@ fn handle_player_drop_input(
 
                 commands.spawn((
                     Piece {},
+                    Falling {
+                        end_position: Transform::from_xyz(x, y, -1.0),
+                    },
                     Sprite::from_image(assets.yellow_piece.clone()),
-                    Transform::from_xyz(x, y, -1.0),
+                    Transform::from_xyz(x, transform.translation.y, -1.0),
                 ));
 
-                next_state.set(AppState::IsGameOver);
+                next_state.set(AppState::SimulateGravity);
             }
         }
+    }
+}
+
+fn hide_active_piece(mut query: Query<&mut Visibility, With<ActivePiece>>) {
+    if let Ok(mut visibility) = query.single_mut() {
+        *visibility = Visibility::Hidden;
     }
 }
 
@@ -202,11 +229,35 @@ fn handle_bot_input(
 
     commands.spawn((
         Piece {},
+        Falling {
+            end_position: Transform::from_xyz(x, y, -1.0),
+        },
         Sprite::from_image(assets.red_piece.clone()),
-        Transform::from_xyz(x, y, -1.0),
+        Transform::from_xyz(x, HALF_BOARD_HEIGHT + HALF_PIECE_SIZE, -1.0),
     ));
 
-    next_state.set(AppState::IsGameOver);
+    next_state.set(AppState::SimulateGravity);
+}
+
+fn simulate_gravity(
+    time: Res<Time>,
+    mut query: Query<(Entity, &Falling, &mut Transform)>,
+    mut commands: Commands,
+    mut next_state: ResMut<NextState<AppState>>,
+) {
+    let delta_time = time.delta_secs();
+    if let Ok((entity, falling, mut transform)) = query.single_mut() {
+        let direction = falling.end_position.translation - transform.translation;
+        let distance = direction.length();
+        let step = GRAVITY * delta_time;
+        if distance > step {
+            transform.translation += direction.normalize() * step;
+        } else {
+            transform.translation = falling.end_position.translation;
+            commands.entity(entity).remove::<Falling>();
+            next_state.set(AppState::IsGameOver);
+        }
+    }
 }
 
 fn check_is_game_over(
