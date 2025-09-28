@@ -1,6 +1,6 @@
 use crate::assets::Assets;
 use crate::settings::*;
-use crate::states::AppState;
+use crate::states::{AppState, GameState};
 use bevy::prelude::*;
 use connect_four_engine::bitboard::*;
 use connect_four_engine::bot::find_best_move;
@@ -46,35 +46,71 @@ pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(AppState::SetupGame), setup);
-        app.add_systems(OnEnter(AppState::WhoTurn), check_who_turn);
+        app.add_systems(OnEnter(AppState::InGame), setup);
+        app.add_systems(
+            OnEnter(GameState::WhoTurn),
+            check_who_turn.run_if(in_state(AppState::InGame)),
+        );
         app.add_systems(
             Update,
-            handle_player_move_input.run_if(in_state(AppState::PlayerInput)),
+            handle_player_move_input
+                .run_if(in_state(AppState::InGame))
+                .run_if(in_state(GameState::PlayerInput)),
         );
-        app.add_systems(OnEnter(AppState::PlayerInput), unhide_active_piece);
+        app.add_systems(
+            OnEnter(GameState::PlayerInput),
+            unhide_active_piece.run_if(in_state(AppState::InGame)),
+        );
         app.add_systems(
             Update,
-            handle_player_drop_input.run_if(in_state(AppState::PlayerInput)),
+            handle_player_drop_input
+                .run_if(in_state(AppState::InGame))
+                .run_if(in_state(GameState::PlayerInput)),
         );
-        app.add_systems(OnExit(AppState::PlayerInput), hide_active_piece);
-        app.add_systems(OnEnter(AppState::BotInput), handle_bot_input);
+        app.add_systems(
+            OnExit(GameState::PlayerInput),
+            hide_active_piece.run_if(in_state(AppState::InGame)),
+        );
+        app.add_systems(
+            OnEnter(GameState::BotInput),
+            handle_bot_input.run_if(in_state(AppState::InGame)),
+        );
         app.add_systems(
             Update,
-            simulate_gravity.run_if(in_state(AppState::SimulateGravity)),
+            simulate_gravity
+                .run_if(in_state(AppState::InGame))
+                .run_if(in_state(GameState::SimulateGravity)),
         );
-        app.add_systems(OnEnter(AppState::IsGameOver), check_is_game_over);
-        app.add_systems(OnEnter(AppState::GameOver), display_game_over_text);
+        app.add_systems(
+            OnEnter(GameState::IsGameOver),
+            check_is_game_over.run_if(in_state(AppState::InGame)),
+        );
+        app.add_systems(
+            OnEnter(GameState::GameOver),
+            display_game_over_text.run_if(in_state(AppState::InGame)),
+        );
         app.add_systems(
             Update,
-            handle_replay_input.run_if(in_state(AppState::GameOver)),
+            handle_replay_input
+                .run_if(in_state(AppState::InGame))
+                .run_if(in_state(GameState::GameOver)),
         );
-        app.add_systems(OnExit(AppState::GameOver), remove_game_over_text);
-        app.add_systems(OnEnter(AppState::Replay), handle_replay);
+        app.add_systems(
+            OnExit(GameState::GameOver),
+            remove_game_over_text.run_if(in_state(AppState::InGame)),
+        );
+        app.add_systems(
+            OnEnter(GameState::Replay),
+            handle_replay.run_if(in_state(AppState::InGame)),
+        );
     }
 }
 
-fn setup(mut commands: Commands, assets: Res<Assets>, mut next_state: ResMut<NextState<AppState>>) {
+fn setup(
+    mut commands: Commands,
+    assets: Res<Assets>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
     commands.insert_resource(GameData {
         game_board: 0,
         player_board: 0,
@@ -110,15 +146,15 @@ fn setup(mut commands: Commands, assets: Res<Assets>, mut next_state: ResMut<Nex
                 },
             ));
         });
-    next_state.set(AppState::WhoTurn);
+    next_state.set(GameState::WhoTurn);
 }
 
-fn check_who_turn(mut game_data: ResMut<GameData>, mut next_state: ResMut<NextState<AppState>>) {
+fn check_who_turn(mut game_data: ResMut<GameData>, mut next_state: ResMut<NextState<GameState>>) {
     if game_data.player_turn {
-        next_state.set(AppState::PlayerInput);
+        next_state.set(GameState::PlayerInput);
         game_data.player_turn = !game_data.player_turn;
     } else {
-        next_state.set(AppState::BotInput);
+        next_state.set(GameState::BotInput);
         game_data.player_turn = !game_data.player_turn;
     }
 }
@@ -158,7 +194,7 @@ fn handle_player_drop_input(
     mut game_data: ResMut<GameData>,
     mut game_result: ResMut<GameResult>,
     assets: Res<Assets>,
-    mut next_state: ResMut<NextState<AppState>>,
+    mut next_state: ResMut<NextState<GameState>>,
 ) {
     if let Ok((active_piece, transform)) = query.single() {
         if keys.just_pressed(KeyCode::Space) {
@@ -169,7 +205,7 @@ fn handle_player_drop_input(
 
                 let Some((row, col)) = indices_from_bitmask(next_row) else {
                     game_result.result = Result::Unknow;
-                    next_state.set(AppState::GameOver);
+                    next_state.set(GameState::GameOver);
                     return;
                 };
 
@@ -185,7 +221,7 @@ fn handle_player_drop_input(
                     Transform::from_xyz(x, transform.translation.y, -1.0),
                 ));
 
-                next_state.set(AppState::SimulateGravity);
+                next_state.set(GameState::SimulateGravity);
             }
         }
     }
@@ -202,7 +238,7 @@ fn handle_bot_input(
     mut game_data: ResMut<GameData>,
     mut game_result: ResMut<GameResult>,
     assets: Res<Assets>,
-    mut next_state: ResMut<NextState<AppState>>,
+    mut next_state: ResMut<NextState<GameState>>,
 ) {
     let Some(best_move) = find_best_move(
         game_data.game_board,
@@ -211,7 +247,7 @@ fn handle_bot_input(
         8,
     ) else {
         game_result.result = Result::Unknow;
-        next_state.set(AppState::GameOver);
+        next_state.set(GameState::GameOver);
         return;
     };
 
@@ -221,7 +257,7 @@ fn handle_bot_input(
 
     let Some((row, col)) = indices_from_bitmask(next_row) else {
         game_result.result = Result::Unknow;
-        next_state.set(AppState::GameOver);
+        next_state.set(GameState::GameOver);
         return;
     };
 
@@ -237,14 +273,14 @@ fn handle_bot_input(
         Transform::from_xyz(x, HALF_BOARD_HEIGHT + HALF_PIECE_SIZE, -1.0),
     ));
 
-    next_state.set(AppState::SimulateGravity);
+    next_state.set(GameState::SimulateGravity);
 }
 
 fn simulate_gravity(
     time: Res<Time>,
     mut query: Query<(Entity, &Falling, &mut Transform)>,
     mut commands: Commands,
-    mut next_state: ResMut<NextState<AppState>>,
+    mut next_state: ResMut<NextState<GameState>>,
 ) {
     let delta_time = time.delta_secs();
     if let Ok((entity, falling, mut transform)) = query.single_mut() {
@@ -256,7 +292,7 @@ fn simulate_gravity(
         } else {
             transform.translation = falling.end_position.translation;
             commands.entity(entity).remove::<Falling>();
-            next_state.set(AppState::IsGameOver);
+            next_state.set(GameState::IsGameOver);
         }
     }
 }
@@ -264,27 +300,27 @@ fn simulate_gravity(
 fn check_is_game_over(
     game_data: Res<GameData>,
     mut game_result: ResMut<GameResult>,
-    mut next_state: ResMut<NextState<AppState>>,
+    mut next_state: ResMut<NextState<GameState>>,
 ) {
     if has_won(game_data.player_board) {
         game_result.result = Result::PlayerWon;
-        next_state.set(AppState::GameOver);
+        next_state.set(GameState::GameOver);
         return;
     }
 
     if has_won(game_data.bot_board) {
         game_result.result = Result::BotWon;
-        next_state.set(AppState::GameOver);
+        next_state.set(GameState::GameOver);
         return;
     }
 
     if is_board_full(game_data.game_board) {
         game_result.result = Result::Draw;
-        next_state.set(AppState::GameOver);
+        next_state.set(GameState::GameOver);
         return;
     }
 
-    next_state.set(AppState::WhoTurn);
+    next_state.set(GameState::WhoTurn);
 }
 
 fn display_game_over_text(mut commands: Commands, game_result: Res<GameResult>) {
@@ -329,10 +365,10 @@ fn display_game_over_text(mut commands: Commands, game_result: Res<GameResult>) 
 
 fn handle_replay_input(
     keys: Res<ButtonInput<KeyCode>>,
-    mut next_state: ResMut<NextState<AppState>>,
+    mut next_state: ResMut<NextState<GameState>>,
 ) {
     if keys.just_pressed(KeyCode::Space) {
-        next_state.set(AppState::Replay);
+        next_state.set(GameState::Replay);
     }
 }
 
@@ -347,7 +383,7 @@ fn handle_replay(
     query: Query<Entity, With<Piece>>,
     mut game_data: ResMut<GameData>,
     mut game_result: ResMut<GameResult>,
-    mut next_state: ResMut<NextState<AppState>>,
+    mut next_state: ResMut<NextState<GameState>>,
 ) {
     for piece in query {
         commands.entity(piece).despawn();
@@ -371,5 +407,5 @@ fn handle_replay(
         result: Result::Unknow,
     };
 
-    next_state.set(AppState::WhoTurn);
+    next_state.set(GameState::WhoTurn);
 }

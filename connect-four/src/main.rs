@@ -4,12 +4,12 @@ mod main_menu;
 mod settings;
 mod states;
 
+use crate::states::{AppState, GameState};
 use assets::Assets;
 use bevy::prelude::*;
 use bevy::window::EnabledButtons;
 use game::GamePlugin;
 use main_menu::MainMenuPlugin;
-use states::AppState;
 
 fn main() {
     App::new()
@@ -34,6 +34,7 @@ fn main() {
             MainMenuPlugin,
         ))
         .insert_state(AppState::Loading)
+        .insert_state(GameState::Setup)
         .add_systems(Startup, setup)
         .add_systems(Startup, load_assets)
         .add_systems(

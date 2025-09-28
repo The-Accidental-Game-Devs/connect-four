@@ -76,7 +76,7 @@ fn handle_play_button(
     if let Ok((interaction, _play_button)) = query.single() {
         match *interaction {
             Interaction::Pressed => {
-                next_state.set(AppState::SetupGame);
+                next_state.set(AppState::InGame);
             }
             _ => {}
         }

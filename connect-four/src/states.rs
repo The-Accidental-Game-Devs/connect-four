@@ -5,7 +5,13 @@ pub enum AppState {
     #[default]
     Loading,
     MainMenu,
-    SetupGame,
+    InGame,
+}
+
+#[derive(States, PartialEq, Eq, Hash, Clone, Default, Debug)]
+pub enum GameState {
+    #[default]
+    Setup,
     WhoTurn,
     PlayerInput,
     BotInput,
