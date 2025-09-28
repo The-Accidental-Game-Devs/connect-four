@@ -120,32 +120,21 @@ fn setup(
     commands.insert_resource(GameResult {
         result: Result::Unknow,
     });
-    commands.spawn(Sprite::from_image(assets.board.clone()));
-    commands.spawn(Sprite::from_image(assets.board_border.clone()));
+    commands.spawn((
+        Sprite::from_image(assets.board.clone()),
+        StateScoped(AppState::InGame),
+    ));
+    commands.spawn((
+        Sprite::from_image(assets.board_border.clone()),
+        StateScoped(AppState::InGame),
+    ));
     commands.spawn((
         ActivePiece { col: 3 },
         Sprite::from_image(assets.yellow_piece.clone()),
         Transform::from_xyz(0.0, HALF_BOARD_HEIGHT + HALF_PIECE_SIZE, 0.0),
         Visibility::Visible,
+        StateScoped(AppState::InGame),
     ));
-    commands
-        .spawn((Node {
-            width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
-            align_items: AlignItems::End,
-            justify_content: JustifyContent::Center,
-            ..default()
-        },))
-        .with_children(|parent| {
-            parent.spawn((
-                Text::new("Press A|D to move left|right, Press Space to place piece"),
-                TextColor(Color::BLACK),
-                TextFont {
-                    font_size: 16.0,
-                    ..default()
-                },
-            ));
-        });
     next_state.set(GameState::WhoTurn);
 }
 
@@ -219,6 +208,7 @@ fn handle_player_drop_input(
                     },
                     Sprite::from_image(assets.yellow_piece.clone()),
                     Transform::from_xyz(x, transform.translation.y, -1.0),
+                    StateScoped(AppState::InGame),
                 ));
 
                 next_state.set(GameState::SimulateGravity);
@@ -271,6 +261,7 @@ fn handle_bot_input(
         },
         Sprite::from_image(assets.red_piece.clone()),
         Transform::from_xyz(x, HALF_BOARD_HEIGHT + HALF_PIECE_SIZE, -1.0),
+        StateScoped(AppState::InGame),
     ));
 
     next_state.set(GameState::SimulateGravity);
@@ -342,6 +333,7 @@ fn display_game_over_text(mut commands: Commands, game_result: Res<GameResult>) 
                 ..default()
             },
             GameOverText {},
+            StateScoped(AppState::InGame),
         ))
         .with_children(|parent| {
             parent.spawn((
@@ -381,8 +373,8 @@ fn remove_game_over_text(mut commands: Commands, query: Query<Entity, With<GameO
 fn handle_replay(
     mut commands: Commands,
     query: Query<Entity, With<Piece>>,
-    mut game_data: ResMut<GameData>,
-    mut game_result: ResMut<GameResult>,
+    game_data: Res<GameData>,
+    game_result: Res<GameResult>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
     for piece in query {
@@ -396,16 +388,15 @@ fn handle_replay(
         Result::Unknow => true,
     };
 
-    *game_data = GameData {
+    commands.insert_resource(GameData {
         game_board: 0,
         player_board: 0,
         bot_board: 0,
         player_turn: player_turn,
-    };
-
-    *game_result = GameResult {
+    });
+    commands.insert_resource(GameResult {
         result: Result::Unknow,
-    };
+    });
 
     next_state.set(GameState::WhoTurn);
 }

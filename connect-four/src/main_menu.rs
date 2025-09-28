@@ -1,8 +1,6 @@
 use crate::states::AppState;
 use bevy::prelude::*;
 
-#[derive(Component)]
-struct MainMenu {}
 
 #[derive(Component)]
 struct PlayButton {}
@@ -16,7 +14,6 @@ impl Plugin for MainMenuPlugin {
             Update,
             handle_play_button.run_if(in_state(AppState::MainMenu)),
         );
-        app.add_systems(OnExit(AppState::MainMenu), unload_main_menu);
     }
 }
 
@@ -31,7 +28,7 @@ fn setup(mut commands: Commands) {
                 flex_direction: FlexDirection::Column,
                 ..default()
             },
-            MainMenu {},
+            StateScoped(AppState::MainMenu),
         ))
         .with_children(|parent| {
             parent.spawn((
@@ -80,11 +77,5 @@ fn handle_play_button(
             }
             _ => {}
         }
-    }
-}
-
-fn unload_main_menu(mut commands: Commands, query: Query<Entity, With<MainMenu>>) {
-    if let Ok(main_menu) = query.single() {
-        commands.entity(main_menu).despawn();
     }
 }
