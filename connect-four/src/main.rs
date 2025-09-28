@@ -1,5 +1,6 @@
 mod assets;
 mod game;
+mod main_menu;
 mod settings;
 mod states;
 
@@ -7,6 +8,7 @@ use assets::Assets;
 use bevy::prelude::*;
 use bevy::window::EnabledButtons;
 use game::GamePlugin;
+use main_menu::MainMenuPlugin;
 use states::AppState;
 
 fn main() {
@@ -29,6 +31,7 @@ fn main() {
                 ..default()
             }),
             GamePlugin,
+            MainMenuPlugin,
         ))
         .insert_state(AppState::Loading)
         .add_systems(Startup, setup)
@@ -54,15 +57,15 @@ fn load_assets(mut commands: Commands, asset_server: Res<AssetServer>) {
 }
 
 fn check_assets_loaded(
-    assets_server: Res<AssetServer>,
+    asset_server: Res<AssetServer>,
     assets: Res<Assets>,
     mut next_state: ResMut<NextState<AppState>>,
 ) {
-    if assets_server.is_loaded_with_dependencies(&assets.board)
-        && assets_server.is_loaded_with_dependencies(&assets.board_border)
-        && assets_server.is_loaded_with_dependencies(&assets.red_piece)
-        && assets_server.is_loaded_with_dependencies(&assets.yellow_piece)
+    if asset_server.is_loaded_with_dependencies(&assets.board)
+        && asset_server.is_loaded_with_dependencies(&assets.board_border)
+        && asset_server.is_loaded_with_dependencies(&assets.red_piece)
+        && asset_server.is_loaded_with_dependencies(&assets.yellow_piece)
     {
-        next_state.set(AppState::SetupGame);
+        next_state.set(AppState::MainMenu);
     }
 }
