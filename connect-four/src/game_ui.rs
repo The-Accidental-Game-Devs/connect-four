@@ -1,3 +1,4 @@
+use crate::assets::Assets;
 use crate::game_result::{GameResult, Result};
 use crate::states::{AppState, GameState};
 use crate::ui_settings::*;
@@ -45,7 +46,7 @@ impl Plugin for GameUiPlugin {
     }
 }
 
-fn setup(mut commands: Commands) {
+fn setup(mut commands: Commands, assets: Res<Assets>) {
     commands
         .spawn((
             Node {
@@ -77,6 +78,7 @@ fn setup(mut commands: Commands) {
                     back_button.spawn((
                         Text::new("Back"),
                         TextFont {
+                            font: assets.font.clone(),
                             font_size: SM_FONT_SIZE,
                             ..default()
                         },
@@ -116,12 +118,13 @@ fn setup(mut commands: Commands) {
                     game_over.spawn((
                         GameOverText {},
                         Node {
-                            margin: UiRect::all(Val::Px(SM_MARGIN)),
+                            margin: UiRect::all(Val::Px(MD_MARGIN)),
                             ..default()
                         },
                         Text::new("Undefine"),
                         TextColor(Color::BLACK),
                         TextFont {
+                            font: assets.bold_font.clone(),
                             font_size: LG_FONT_SIZE,
                             ..default()
                         },
@@ -145,6 +148,7 @@ fn setup(mut commands: Commands) {
                             back_button.spawn((
                                 Text::new("Replay!"),
                                 TextFont {
+                                    font: assets.font.clone(),
                                     font_size: MD_FONT_SIZE,
                                     ..default()
                                 },
@@ -169,6 +173,7 @@ fn setup(mut commands: Commands) {
                             back_button.spawn((
                                 Text::new("Back"),
                                 TextFont {
+                                    font: assets.font.clone(),
                                     font_size: MD_FONT_SIZE,
                                     ..default()
                                 },

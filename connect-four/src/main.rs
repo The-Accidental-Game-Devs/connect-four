@@ -60,6 +60,8 @@ fn load_assets(mut commands: Commands, asset_server: Res<AssetServer>) {
         board_border: asset_server.load("board_border.png"),
         red_piece: asset_server.load("red_piece.png"),
         yellow_piece: asset_server.load("yellow_piece.png"),
+        font: asset_server.load("Roboto/static/Roboto-Regular.ttf"),
+        bold_font: asset_server.load("Roboto/static/Roboto-Bold.ttf"),
     });
 }
 
@@ -72,6 +74,8 @@ fn check_assets_loaded(
         && asset_server.is_loaded_with_dependencies(&assets.board_border)
         && asset_server.is_loaded_with_dependencies(&assets.red_piece)
         && asset_server.is_loaded_with_dependencies(&assets.yellow_piece)
+        && asset_server.is_loaded_with_dependencies(&assets.font)
+        && asset_server.is_loaded_with_dependencies(&assets.bold_font)
     {
         next_state.set(AppState::MainMenu);
     }

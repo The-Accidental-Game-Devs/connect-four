@@ -1,3 +1,4 @@
+use crate::assets::Assets;
 use crate::states::AppState;
 use crate::ui_settings::*;
 use bevy::prelude::*;
@@ -17,7 +18,7 @@ impl Plugin for MainMenuPlugin {
     }
 }
 
-fn setup(mut commands: Commands) {
+fn setup(mut commands: Commands, assets: Res<Assets>) {
     commands
         .spawn((
             Node {
@@ -39,9 +40,10 @@ fn setup(mut commands: Commands) {
                     },
                     ..default()
                 },
-                Text::new("Connect4"),
+                Text::new("Connect-4"),
                 TextColor(Color::BLACK),
                 TextFont {
+                    font: assets.bold_font.clone(),
                     font_size: LG_FONT_SIZE,
                     ..default()
                 },
@@ -67,6 +69,7 @@ fn setup(mut commands: Commands) {
                         Text::new("Play!"),
                         TextColor(Color::WHITE),
                         TextFont {
+                            font: assets.font.clone(),
                             font_size: MD_FONT_SIZE,
                             ..default()
                         },
