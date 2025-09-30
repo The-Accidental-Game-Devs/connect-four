@@ -51,7 +51,31 @@ fn setup(mut commands: Commands, assets: Res<Assets>) {
         .spawn((
             Node {
                 width: Val::Percent(100.0),
-                height: Val::Auto,
+                height: Val::Percent(100.0),
+                align_items: AlignItems::End,
+                justify_content: JustifyContent::Center,
+                padding: UiRect::all(Val::Px(PADDING)),
+                ..default()
+            },
+            StateScoped(AppState::InGame),
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                Text::new("Press a|d to move left|right. Press space bar to drop a piece."),
+                TextColor(Color::BLACK),
+                TextFont {
+                    font: assets.font.clone(),
+                    font_size: SM_FONT_SIZE,
+                    ..default()
+                },
+            ));
+        });
+
+    commands
+        .spawn((
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
                 align_items: AlignItems::Start,
                 justify_content: JustifyContent::Start,
                 padding: UiRect::all(Val::Px(PADDING)),
