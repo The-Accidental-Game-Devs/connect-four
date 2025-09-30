@@ -41,7 +41,7 @@ fn setup(mut commands: Commands, assets: Res<Assets>) {
                     ..default()
                 },
                 Text::new("Connect-4"),
-                TextColor(Color::BLACK),
+                TextColor(Srgba::hex(PRIMARY_COLOR).unwrap().into()),
                 TextFont {
                     font: assets.bold_font.clone(),
                     font_size: LG_FONT_SIZE,
@@ -57,9 +57,7 @@ fn setup(mut commands: Commands, assets: Res<Assets>) {
                         justify_content: JustifyContent::Center,
                         ..default()
                     },
-                    BackgroundColor(Color::Srgba(Srgba::from(
-                        Srgba::hex(PRIMARY_COLOR).unwrap(),
-                    ))),
+                    BackgroundColor(Srgba::hex(PRIMARY_COLOR).unwrap().into()),
                     BorderRadius::all(Val::Px(BORDER_RADIUS)),
                     Button {},
                     PlayButton {},
