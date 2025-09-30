@@ -1,4 +1,5 @@
 use crate::assets::Assets;
+use crate::game_result::{GameResult, Result};
 use crate::settings::*;
 use crate::states::{AppState, GameState};
 use bevy::prelude::*;
@@ -13,19 +14,6 @@ struct GameData {
     player_turn: bool,
 }
 
-#[derive(PartialEq)]
-enum Result {
-    PlayerWon,
-    BotWon,
-    Draw,
-    Unknow,
-}
-
-#[derive(Resource)]
-struct GameResult {
-    result: Result,
-}
-
 #[derive(Component)]
 struct ActivePiece {
     col: usize,
@@ -38,9 +26,6 @@ struct Piece {}
 struct Falling {
     end_position: Transform,
 }
-
-#[derive(Component)]
-struct GameOverText {}
 
 pub struct GamePlugin;
 
@@ -84,20 +69,6 @@ impl Plugin for GamePlugin {
         app.add_systems(
             OnEnter(GameState::IsGameOver),
             check_is_game_over.run_if(in_state(AppState::InGame)),
-        );
-        app.add_systems(
-            OnEnter(GameState::GameOver),
-            display_game_over_text.run_if(in_state(AppState::InGame)),
-        );
-        app.add_systems(
-            Update,
-            handle_replay_input
-                .run_if(in_state(AppState::InGame))
-                .run_if(in_state(GameState::GameOver)),
-        );
-        app.add_systems(
-            OnExit(GameState::GameOver),
-            remove_game_over_text.run_if(in_state(AppState::InGame)),
         );
         app.add_systems(
             OnEnter(GameState::Replay),
@@ -312,62 +283,6 @@ fn check_is_game_over(
     }
 
     next_state.set(GameState::WhoTurn);
-}
-
-fn display_game_over_text(mut commands: Commands, game_result: Res<GameResult>) {
-    let game_over_text = match game_result.result {
-        Result::PlayerWon => "Player Won!",
-        Result::BotWon => "Bot Won!",
-        Result::Draw => "Draw.",
-        Result::Unknow => "Something want wrong.",
-    };
-
-    commands
-        .spawn((
-            Node {
-                width: Val::Percent(100.0),
-                height: Val::Percent(100.0),
-                align_items: AlignItems::Center,
-                justify_content: JustifyContent::Center,
-                flex_direction: FlexDirection::Column,
-                ..default()
-            },
-            GameOverText {},
-            StateScoped(AppState::InGame),
-        ))
-        .with_children(|parent| {
-            parent.spawn((
-                Text::new(game_over_text),
-                TextColor(Color::BLACK),
-                TextFont {
-                    font_size: 64.0,
-                    ..default()
-                },
-            ));
-            parent.spawn((
-                Text::new("Press space to play again."),
-                TextColor(Color::BLACK),
-                TextFont {
-                    font_size: 32.0,
-                    ..default()
-                },
-            ));
-        });
-}
-
-fn handle_replay_input(
-    keys: Res<ButtonInput<KeyCode>>,
-    mut next_state: ResMut<NextState<GameState>>,
-) {
-    if keys.just_pressed(KeyCode::Space) {
-        next_state.set(GameState::Replay);
-    }
-}
-
-fn remove_game_over_text(mut commands: Commands, query: Query<Entity, With<GameOverText>>) {
-    if let Ok(game_over_text) = query.single() {
-        commands.entity(game_over_text).despawn();
-    }
 }
 
 fn handle_replay(

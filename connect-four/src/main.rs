@@ -1,9 +1,11 @@
 mod assets;
 mod game;
+mod game_result;
 mod game_ui;
 mod main_menu;
 mod settings;
 mod states;
+mod ui_settings;
 
 use crate::states::{AppState, GameState};
 use assets::Assets;
@@ -33,8 +35,8 @@ fn main() {
                 ..default()
             }),
             MainMenuPlugin,
-            GameUiPlugin,
             GamePlugin,
+            GameUiPlugin,
         ))
         .insert_state(AppState::Loading)
         .enable_state_scoped_entities::<AppState>()

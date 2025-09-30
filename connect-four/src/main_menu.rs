@@ -1,6 +1,6 @@
 use crate::states::AppState;
+use crate::ui_settings::*;
 use bevy::prelude::*;
-
 
 #[derive(Component)]
 struct PlayButton {}
@@ -34,7 +34,7 @@ fn setup(mut commands: Commands) {
             parent.spawn((
                 Node {
                     margin: UiRect {
-                        bottom: Val::Px(24.0),
+                        bottom: Val::Px(MD_MARGIN),
                         ..default()
                     },
                     ..default()
@@ -42,26 +42,35 @@ fn setup(mut commands: Commands) {
                 Text::new("Connect4"),
                 TextColor(Color::BLACK),
                 TextFont {
-                    font_size: 64.0,
+                    font_size: LG_FONT_SIZE,
                     ..default()
                 },
             ));
             parent
                 .spawn((
                     Node {
-                        width: Val::Px(250.0),
-                        height: Val::Px(60.0),
+                        width: Val::Px(MD_BUTTON_WIDTH),
+                        height: Val::Px(MD_BUTTON_HEIGHT),
                         align_items: AlignItems::Center,
                         justify_content: JustifyContent::Center,
                         ..default()
                     },
-                    BackgroundColor(Color::BLACK),
-                    BorderRadius::all(Val::Px(24.0)),
+                    BackgroundColor(Color::Srgba(Srgba::from(
+                        Srgba::hex(PRIMARY_COLOR).unwrap(),
+                    ))),
+                    BorderRadius::all(Val::Px(BORDER_RADIUS)),
                     Button {},
                     PlayButton {},
                 ))
                 .with_children(|play_button| {
-                    play_button.spawn(Text::new("Play!"));
+                    play_button.spawn((
+                        Text::new("Play!"),
+                        TextColor(Color::WHITE),
+                        TextFont {
+                            font_size: MD_FONT_SIZE,
+                            ..default()
+                        },
+                    ));
                 });
         });
 }
