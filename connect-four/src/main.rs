@@ -10,7 +10,7 @@ mod ui_settings;
 use crate::states::{AppState, GameState};
 use assets::Assets;
 use bevy::prelude::*;
-use bevy::render::camera::ScalingMode;
+use bevy::camera::ScalingMode;
 use game::GamePlugin;
 use game_ui::GameUiPlugin;
 use main_menu::MainMenuPlugin;
@@ -23,7 +23,7 @@ fn main() {
                 primary_window: Some(Window {
                     title: "Connect Four".into(),
                     name: Some("Connect Four".into()),
-                    resolution: (1280.0, 720.0).into(),
+                    resolution: (1280, 720).into(),
                     resizable: true,
                     ..default()
                 }),
@@ -34,7 +34,6 @@ fn main() {
             GameUiPlugin,
         ))
         .insert_state(AppState::Loading)
-        .enable_state_scoped_entities::<AppState>()
         .insert_state(GameState::Setup)
         .add_systems(Startup, setup)
         .add_systems(Startup, load_assets)

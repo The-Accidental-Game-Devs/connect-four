@@ -93,18 +93,18 @@ fn setup(
     });
     commands.spawn((
         Sprite::from_image(assets.board.clone()),
-        StateScoped(AppState::InGame),
+        DespawnOnExit(AppState::InGame),
     ));
     commands.spawn((
         Sprite::from_image(assets.board_border.clone()),
-        StateScoped(AppState::InGame),
+        DespawnOnExit(AppState::InGame),
     ));
     commands.spawn((
         ActivePiece { col: 3 },
         Sprite::from_image(assets.yellow_piece.clone()),
         Transform::from_xyz(0.0, HALF_BOARD_HEIGHT + HALF_PIECE_SIZE, 0.0),
         Visibility::Visible,
-        StateScoped(AppState::InGame),
+        DespawnOnExit(AppState::InGame),
     ));
     next_state.set(GameState::WhoTurn);
 }
@@ -179,7 +179,7 @@ fn handle_player_drop_input(
                     },
                     Sprite::from_image(assets.yellow_piece.clone()),
                     Transform::from_xyz(x, transform.translation.y, -1.0),
-                    StateScoped(AppState::InGame),
+                    DespawnOnExit(AppState::InGame),
                 ));
 
                 next_state.set(GameState::SimulateGravity);
@@ -232,7 +232,7 @@ fn handle_bot_input(
         },
         Sprite::from_image(assets.red_piece.clone()),
         Transform::from_xyz(x, HALF_BOARD_HEIGHT + HALF_PIECE_SIZE, -1.0),
-        StateScoped(AppState::InGame),
+        DespawnOnExit(AppState::InGame),
     ));
 
     next_state.set(GameState::SimulateGravity);

@@ -57,7 +57,7 @@ fn setup(mut commands: Commands, assets: Res<Assets>) {
                 padding: UiRect::all(Val::Px(PADDING)),
                 ..default()
             },
-            StateScoped(AppState::InGame),
+            DespawnOnExit(AppState::InGame),
         ))
         .with_children(|parent| {
             parent.spawn((
@@ -81,7 +81,7 @@ fn setup(mut commands: Commands, assets: Res<Assets>) {
                 padding: UiRect::all(Val::Px(PADDING)),
                 ..default()
             },
-            StateScoped(AppState::InGame),
+            DespawnOnExit(AppState::InGame),
         ))
         .with_children(|parent| {
             parent
@@ -121,7 +121,7 @@ fn setup(mut commands: Commands, assets: Res<Assets>) {
                 ..default()
             },
             Visibility::Hidden,
-            StateScoped(AppState::InGame),
+            DespawnOnExit(AppState::InGame),
         ))
         .with_children(|parent| {
             parent

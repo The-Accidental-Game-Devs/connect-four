@@ -29,7 +29,7 @@ fn setup(mut commands: Commands, assets: Res<Assets>) {
                 flex_direction: FlexDirection::Column,
                 ..default()
             },
-            StateScoped(AppState::MainMenu),
+            DespawnOnExit(AppState::MainMenu),
         ))
         .with_children(|parent| {
             parent.spawn((
