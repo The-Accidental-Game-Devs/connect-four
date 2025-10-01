@@ -50,8 +50,8 @@ fn setup(mut commands: Commands) {
         Camera2d,
         Projection::from(OrthographicProjection {
             scaling_mode: ScalingMode::AutoMin {
-                min_width: 1280.0,
-                min_height: 720.0,
+                min_width: 1920.0,
+                min_height: 1080.0,
             },
             ..OrthographicProjection::default_2d()
         }),
