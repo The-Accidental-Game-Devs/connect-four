@@ -9,8 +9,9 @@ mod ui_settings;
 
 use crate::states::{AppState, GameState};
 use assets::Assets;
-use bevy::prelude::*;
 use bevy::camera::ScalingMode;
+use bevy::window::PresentMode;
+use bevy::prelude::*;
 use game::GamePlugin;
 use game_ui::GameUiPlugin;
 use main_menu::MainMenuPlugin;
@@ -25,6 +26,7 @@ fn main() {
                     name: Some("Connect Four".into()),
                     resolution: (1280, 720).into(),
                     resizable: true,
+                    present_mode: PresentMode::AutoNoVsync,
                     ..default()
                 }),
                 ..default()
