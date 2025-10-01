@@ -10,7 +10,7 @@ mod ui_settings;
 use crate::states::{AppState, GameState};
 use assets::Assets;
 use bevy::prelude::*;
-use bevy::window::EnabledButtons;
+use bevy::render::camera::ScalingMode;
 use game::GamePlugin;
 use game_ui::GameUiPlugin;
 use main_menu::MainMenuPlugin;
@@ -24,12 +24,7 @@ fn main() {
                     title: "Connect Four".into(),
                     name: Some("Connect Four".into()),
                     resolution: (1280.0, 720.0).into(),
-                    resizable: false,
-                    enabled_buttons: EnabledButtons {
-                        minimize: true,
-                        maximize: false,
-                        close: true,
-                    },
+                    resizable: true,
                     ..default()
                 }),
                 ..default()
@@ -51,7 +46,16 @@ fn main() {
 }
 
 fn setup(mut commands: Commands) {
-    commands.spawn(Camera2d);
+    commands.spawn((
+        Camera2d,
+        Projection::from(OrthographicProjection {
+            scaling_mode: ScalingMode::AutoMin {
+                min_width: 1280.0,
+                min_height: 720.0,
+            },
+            ..OrthographicProjection::default_2d()
+        }),
+    ));
 }
 
 fn load_assets(mut commands: Commands, asset_server: Res<AssetServer>) {
