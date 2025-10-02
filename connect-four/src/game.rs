@@ -25,8 +25,14 @@ struct Piece {}
 
 #[derive(Component)]
 struct Falling {
-    end_position: Transform,
+    end_position: Vec3,
 }
+
+#[derive(Component)]
+struct PhysicsPosition(Vec3);
+
+#[derive(Component)]
+struct PrevPhysicsPosition(Vec3);
 
 pub struct GamePlugin;
 
@@ -62,8 +68,20 @@ impl Plugin for GamePlugin {
             handle_bot_input.run_if(in_state(AppState::InGame)),
         );
         app.add_systems(
-            Update,
+            FixedUpdate,
             simulate_gravity
+                .run_if(in_state(AppState::InGame))
+                .run_if(in_state(GameState::SimulateGravity)),
+        );
+        app.add_systems(
+            Update,
+            interpolate_visual
+                .run_if(in_state(AppState::InGame))
+                .run_if(in_state(GameState::SimulateGravity)),
+        );
+        app.add_systems(
+            Update,
+            is_reached
                 .run_if(in_state(AppState::InGame))
                 .run_if(in_state(GameState::SimulateGravity)),
         );
@@ -176,10 +194,24 @@ fn handle_player_drop_input(
                 commands.spawn((
                     Piece {},
                     Falling {
-                        end_position: Transform::from_xyz(x, y, -1.0),
+                        end_position: Vec3 {
+                            x: x,
+                            y: y,
+                            z: -1.0,
+                        },
                     },
                     Sprite::from_image(assets.yellow_piece.clone()),
                     Transform::from_xyz(x, transform.translation.y, -1.0),
+                    PhysicsPosition(Vec3 {
+                        x: x,
+                        y: transform.translation.y,
+                        z: -1.0,
+                    }),
+                    PrevPhysicsPosition(Vec3 {
+                        x: x,
+                        y: transform.translation.y,
+                        z: -1.0,
+                    }),
                     DespawnOnExit(AppState::InGame),
                 ));
 
@@ -235,10 +267,24 @@ fn handle_bot_input(
     commands.spawn((
         Piece {},
         Falling {
-            end_position: Transform::from_xyz(x, y, -1.0),
+            end_position: Vec3 {
+                x: x,
+                y: y,
+                z: -1.0,
+            },
         },
         Sprite::from_image(assets.red_piece.clone()),
         Transform::from_xyz(x, HALF_BOARD_HEIGHT + HALF_PIECE_SIZE, -1.0),
+        PhysicsPosition(Vec3 {
+            x: x,
+            y: HALF_BOARD_HEIGHT + HALF_PIECE_SIZE,
+            z: -1.0,
+        }),
+        PrevPhysicsPosition(Vec3 {
+            x: x,
+            y: HALF_BOARD_HEIGHT + HALF_PIECE_SIZE,
+            z: -1.0,
+        }),
         DespawnOnExit(AppState::InGame),
     ));
 
@@ -246,21 +292,51 @@ fn handle_bot_input(
 }
 
 fn simulate_gravity(
-    time: Res<Time>,
-    mut query: Query<(Entity, &Falling, &mut Transform)>,
-    mut commands: Commands,
-    mut next_state: ResMut<NextState<GameState>>,
+    time_fixed: Res<Time<Fixed>>,
+    mut query: Query<(&Falling, &mut PhysicsPosition, &mut PrevPhysicsPosition)>,
 ) {
-    let delta_time = time.delta_secs();
-    if let Ok((entity, falling, mut transform)) = query.single_mut() {
-        let direction = falling.end_position.translation - transform.translation;
+    let delta_time = time_fixed.delta_secs();
+    if let Ok((falling, mut current_pos, mut prev_pos)) = query.single_mut() {
+        prev_pos.0 = current_pos.0;
+
+        let direction = falling.end_position - current_pos.0;
         let distance = direction.length();
         let step = GRAVITY * delta_time;
+
         if distance > step {
-            transform.translation += direction.normalize() * step;
+            current_pos.0 += direction.normalize() * step;
         } else {
-            transform.translation = falling.end_position.translation;
-            commands.entity(entity).remove::<Falling>();
+            current_pos.0 = falling.end_position;
+        }
+    }
+}
+
+fn interpolate_visual(
+    time_fixed: Res<Time<Fixed>>,
+    mut query: Query<(
+        &Falling,
+        &PhysicsPosition,
+        &PrevPhysicsPosition,
+        &mut Transform,
+    )>,
+) {
+    let alpha = time_fixed.overstep_fraction();
+
+    if let Ok((_falling, current_pos, prev_pos, mut transform)) = query.single_mut() {
+        transform.translation = prev_pos.0.lerp(current_pos.0, alpha);
+    }
+}
+
+fn is_reached(
+    mut commands: Commands,
+    query: Query<(Entity, &Falling, &Transform)>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
+    if let Ok((entity, falling, transform)) = query.single() {
+        if transform.translation == falling.end_position {
+            commands
+                .entity(entity)
+                .remove::<(PhysicsPosition, PrevPhysicsPosition, Falling)>();
             next_state.set(GameState::IsGameOver);
         }
     }

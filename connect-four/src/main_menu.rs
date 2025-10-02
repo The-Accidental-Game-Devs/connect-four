@@ -19,10 +19,7 @@ pub struct MainMenuPlugin;
 
 impl Plugin for MainMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            OnEnter(AppState::MainMenu),
-            setup,
-        );
+        app.add_systems(OnEnter(AppState::MainMenu), setup);
         app.add_systems(
             Update,
             update_difficulty_text.run_if(in_state(AppState::MainMenu)),
