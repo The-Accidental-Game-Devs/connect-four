@@ -1,5 +1,6 @@
 mod assets;
 mod game;
+mod game_difficulty;
 mod game_result;
 mod game_ui;
 mod main_menu;
@@ -10,15 +11,15 @@ mod ui_settings;
 use crate::states::{AppState, GameState};
 use assets::Assets;
 use bevy::camera::ScalingMode;
-use bevy::window::PresentMode;
 use bevy::prelude::*;
+use bevy::window::PresentMode;
 use game::GamePlugin;
+use game_difficulty::*;
 use game_ui::GameUiPlugin;
 use main_menu::MainMenuPlugin;
 
 fn main() {
     App::new()
-        .insert_resource(ClearColor(Color::srgb(1.0, 1.0, 1.0)))
         .add_plugins((
             DefaultPlugins.set(WindowPlugin {
                 primary_window: Some(Window {
@@ -35,6 +36,10 @@ fn main() {
             GamePlugin,
             GameUiPlugin,
         ))
+        .insert_resource(ClearColor(Color::WHITE))
+        .insert_resource(GameDifficulty {
+            difficulty: Difficulty::Easy,
+        })
         .insert_state(AppState::Loading)
         .insert_state(GameState::Setup)
         .add_systems(Startup, setup)

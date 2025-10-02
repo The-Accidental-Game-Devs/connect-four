@@ -1,4 +1,5 @@
 use crate::assets::Assets;
+use crate::game_difficulty::*;
 use crate::game_result::{GameResult, Result};
 use crate::settings::*;
 use crate::states::{AppState, GameState};
@@ -198,14 +199,20 @@ fn handle_bot_input(
     mut commands: Commands,
     mut game_data: ResMut<GameData>,
     mut game_result: ResMut<GameResult>,
+    game_difficulty: Res<GameDifficulty>,
     assets: Res<Assets>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
+    let depth = match game_difficulty.difficulty {
+        Difficulty::Easy => 4,
+        Difficulty::Normal => 8,
+        Difficulty::Hard => 12,
+    };
     let Some(best_move) = find_best_move(
         game_data.game_board,
         game_data.player_board,
         game_data.bot_board,
-        8,
+        depth,
     ) else {
         game_result.result = Result::Unknow;
         next_state.set(GameState::GameOver);
