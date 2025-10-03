@@ -12,6 +12,8 @@ struct GameData {
     game_board: Bitboard,
     player_board: Bitboard,
     bot_board: Bitboard,
+    player_col: usize,
+    bot_col: usize,
     player_turn: bool,
 }
 
@@ -68,6 +70,10 @@ impl Plugin for GamePlugin {
             handle_bot_input.run_if(in_state(AppState::InGame)),
         );
         app.add_systems(
+            OnEnter(GameState::DropPiece),
+            drop_piece.run_if(in_state(AppState::InGame)),
+        );
+        app.add_systems(
             FixedUpdate,
             simulate_gravity
                 .run_if(in_state(AppState::InGame))
@@ -90,6 +96,10 @@ impl Plugin for GamePlugin {
             check_is_game_over.run_if(in_state(AppState::InGame)),
         );
         app.add_systems(
+            OnEnter(GameState::NextTurn),
+            next_turn.run_if(in_state(AppState::InGame)),
+        );
+        app.add_systems(
             OnEnter(GameState::Replay),
             handle_replay.run_if(in_state(AppState::InGame)),
         );
@@ -105,6 +115,8 @@ fn setup(
         game_board: 0,
         player_board: 0,
         bot_board: 0,
+        player_col: 3,
+        bot_col: 3,
         player_turn: true,
     });
     commands.insert_resource(GameResult {
@@ -128,13 +140,11 @@ fn setup(
     next_state.set(GameState::WhoTurn);
 }
 
-fn check_who_turn(mut game_data: ResMut<GameData>, mut next_state: ResMut<NextState<GameState>>) {
+fn check_who_turn(game_data: Res<GameData>, mut next_state: ResMut<NextState<GameState>>) {
     if game_data.player_turn {
         next_state.set(GameState::PlayerInput);
-        game_data.player_turn = !game_data.player_turn;
     } else {
         next_state.set(GameState::BotInput);
-        game_data.player_turn = !game_data.player_turn;
     }
 }
 
@@ -167,55 +177,16 @@ fn unhide_active_piece(mut query: Query<&mut Visibility, With<ActivePiece>>) {
 }
 
 fn handle_player_drop_input(
-    mut commands: Commands,
-    query: Query<(&ActivePiece, &Transform)>,
+    query: Query<&ActivePiece>,
     keys: Res<ButtonInput<KeyCode>>,
     mut game_data: ResMut<GameData>,
-    mut game_result: ResMut<GameResult>,
-    assets: Res<Assets>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
-    if let Ok((active_piece, transform)) = query.single() {
+    if let Ok(active_piece) = query.single() {
         if keys.just_pressed(KeyCode::Space) {
             if can_place(game_data.game_board, active_piece.col) {
-                let next_row = get_next_row(game_data.game_board, active_piece.col);
-                game_data.game_board |= next_row;
-                game_data.player_board ^= next_row;
-
-                let Some((row, col)) = indices_from_bitmask(next_row) else {
-                    game_result.result = Result::Unknow;
-                    next_state.set(GameState::GameOver);
-                    return;
-                };
-
-                let x = col as f32 * PIECE_SIZE - HALF_BOARD_WIDTH + HALF_PIECE_SIZE;
-                let y = row as f32 * PIECE_SIZE - HALF_BOARD_HEIGHT + HALF_PIECE_SIZE;
-
-                commands.spawn((
-                    Piece {},
-                    Falling {
-                        end_position: Vec3 {
-                            x: x,
-                            y: y,
-                            z: -1.0,
-                        },
-                    },
-                    Sprite::from_image(assets.yellow_piece.clone()),
-                    Transform::from_xyz(x, transform.translation.y, -1.0),
-                    PhysicsPosition(Vec3 {
-                        x: x,
-                        y: transform.translation.y,
-                        z: -1.0,
-                    }),
-                    PrevPhysicsPosition(Vec3 {
-                        x: x,
-                        y: transform.translation.y,
-                        z: -1.0,
-                    }),
-                    DespawnOnExit(AppState::InGame),
-                ));
-
-                next_state.set(GameState::SimulateGravity);
+                game_data.player_col = active_piece.col;
+                next_state.set(GameState::DropPiece);
             }
         }
     }
@@ -228,11 +199,9 @@ fn hide_active_piece(mut query: Query<&mut Visibility, With<ActivePiece>>) {
 }
 
 fn handle_bot_input(
-    mut commands: Commands,
     mut game_data: ResMut<GameData>,
     mut game_result: ResMut<GameResult>,
     game_difficulty: Res<GameDifficulty>,
-    assets: Res<Assets>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
     let depth = match game_difficulty.difficulty {
@@ -250,10 +219,26 @@ fn handle_bot_input(
         next_state.set(GameState::GameOver);
         return;
     };
+    game_data.bot_col = best_move;
+    next_state.set(GameState::DropPiece);
+}
 
-    let next_row = get_next_row(game_data.game_board, best_move);
+fn drop_piece(
+    mut commands: Commands,
+    mut game_data: ResMut<GameData>,
+    mut game_result: ResMut<GameResult>,
+    assets: Res<Assets>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
+    let next_row: Bitboard;
+    if game_data.player_turn {
+        next_row = get_next_row(game_data.game_board, game_data.player_col);
+        game_data.player_board ^= next_row;
+    } else {
+        next_row = get_next_row(game_data.game_board, game_data.bot_col);
+        game_data.bot_board ^= next_row;
+    }
     game_data.game_board |= next_row;
-    game_data.bot_board ^= next_row;
 
     let Some((row, col)) = indices_from_bitmask(next_row) else {
         game_result.result = Result::Unknow;
@@ -261,28 +246,34 @@ fn handle_bot_input(
         return;
     };
 
-    let x = col as f32 * PIECE_SIZE - HALF_BOARD_WIDTH + HALF_PIECE_SIZE;
-    let y = row as f32 * PIECE_SIZE - HALF_BOARD_HEIGHT + HALF_PIECE_SIZE;
+    let start_x = col as f32 * PIECE_SIZE - HALF_BOARD_WIDTH + HALF_PIECE_SIZE;
+    let start_y = HALF_BOARD_HEIGHT + HALF_PIECE_SIZE;
+    let end_x = start_x;
+    let end_y = row as f32 * PIECE_SIZE - HALF_BOARD_HEIGHT + HALF_PIECE_SIZE;
 
     commands.spawn((
         Piece {},
         Falling {
             end_position: Vec3 {
-                x: x,
-                y: y,
+                x: end_x,
+                y: end_y,
                 z: -1.0,
             },
         },
-        Sprite::from_image(assets.red_piece.clone()),
-        Transform::from_xyz(x, HALF_BOARD_HEIGHT + HALF_PIECE_SIZE, -1.0),
+        Sprite::from_image(if game_data.player_turn {
+            assets.yellow_piece.clone()
+        } else {
+            assets.red_piece.clone()
+        }),
+        Transform::from_xyz(start_x, start_y, -1.0),
         PhysicsPosition(Vec3 {
-            x: x,
-            y: HALF_BOARD_HEIGHT + HALF_PIECE_SIZE,
+            x: start_x,
+            y: start_y,
             z: -1.0,
         }),
         PrevPhysicsPosition(Vec3 {
-            x: x,
-            y: HALF_BOARD_HEIGHT + HALF_PIECE_SIZE,
+            x: start_x,
+            y: start_y,
             z: -1.0,
         }),
         DespawnOnExit(AppState::InGame),
@@ -365,6 +356,15 @@ fn check_is_game_over(
         return;
     }
 
+    next_state.set(GameState::NextTurn);
+}
+
+fn next_turn(mut game_data: ResMut<GameData>, mut next_state: ResMut<NextState<GameState>>) {
+    if game_data.player_turn {
+        game_data.player_turn = false;
+    } else {
+        game_data.player_turn = true;
+    }
     next_state.set(GameState::WhoTurn);
 }
 
@@ -390,6 +390,8 @@ fn handle_replay(
         game_board: 0,
         player_board: 0,
         bot_board: 0,
+        player_col: 3,
+        bot_col: 3,
         player_turn: player_turn,
     });
     commands.insert_resource(GameResult {

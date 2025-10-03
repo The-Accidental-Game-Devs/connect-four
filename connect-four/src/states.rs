@@ -15,8 +15,10 @@ pub enum GameState {
     WhoTurn,
     PlayerInput,
     BotInput,
+    DropPiece,
     SimulateGravity,
     IsGameOver,
+    NextTurn,
     GameOver,
     Replay,
 }
