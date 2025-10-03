@@ -35,7 +35,7 @@ impl Plugin for MainMenuPlugin {
     }
 }
 
-fn setup(mut commands: Commands, assets: Res<Assets>) {
+fn setup(mut commands: Commands, assets: Res<Assets>, game_difficulty: Res<GameDifficulty>) {
     commands
         .spawn((
             Node {
@@ -116,7 +116,7 @@ fn setup(mut commands: Commands, assets: Res<Assets>) {
                 .with_children(|play_button| {
                     play_button.spawn((
                         DifficultyText {},
-                        Text::new("Easy"),
+                        Text::new(get_difficulty_str(&game_difficulty.difficulty)),
                         TextColor(Color::WHITE),
                         TextFont {
                             font: assets.font.clone(),
@@ -126,6 +126,20 @@ fn setup(mut commands: Commands, assets: Res<Assets>) {
                     ));
                 });
         });
+}
+
+fn get_difficulty_str(difficulty: &Difficulty) -> &str {
+    match difficulty {
+        Difficulty::Easy => {
+            "Easy"
+        }
+        Difficulty::Normal => {
+            "Normal"
+        }
+        Difficulty::Hard => {
+            "Hard"
+        }
+    }
 }
 
 fn handle_play_button(
@@ -167,17 +181,7 @@ fn update_difficulty_text(
     }
 
     if let Ok((mut text, _difficulty_text)) = query.single_mut() {
-        match game_difficulty.difficulty {
-            Difficulty::Easy => {
-                *text = Text::new("Easy");
-            }
-            Difficulty::Normal => {
-                *text = Text::new("Normal");
-            }
-            Difficulty::Hard => {
-                *text = Text::new("Hard");
-            }
-        }
+        *text = Text::new(get_difficulty_str(&game_difficulty.difficulty));
     }
 }
 
