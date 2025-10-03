@@ -30,12 +30,6 @@ struct Falling {
     end_position: Vec3,
 }
 
-#[derive(Component)]
-struct PhysicsPosition(Vec3);
-
-#[derive(Component)]
-struct PrevPhysicsPosition(Vec3);
-
 pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
@@ -74,14 +68,8 @@ impl Plugin for GamePlugin {
             drop_piece.run_if(in_state(AppState::InGame)),
         );
         app.add_systems(
-            FixedUpdate,
-            simulate_gravity
-                .run_if(in_state(AppState::InGame))
-                .run_if(in_state(GameState::SimulateGravity)),
-        );
-        app.add_systems(
             Update,
-            interpolate_visual
+            simulate_gravity
                 .run_if(in_state(AppState::InGame))
                 .run_if(in_state(GameState::SimulateGravity)),
         );
@@ -266,55 +254,23 @@ fn drop_piece(
             assets.red_piece.clone()
         }),
         Transform::from_xyz(start_x, start_y, -1.0),
-        PhysicsPosition(Vec3 {
-            x: start_x,
-            y: start_y,
-            z: -1.0,
-        }),
-        PrevPhysicsPosition(Vec3 {
-            x: start_x,
-            y: start_y,
-            z: -1.0,
-        }),
         DespawnOnExit(AppState::InGame),
     ));
 
     next_state.set(GameState::SimulateGravity);
 }
 
-fn simulate_gravity(
-    time_fixed: Res<Time<Fixed>>,
-    mut query: Query<(&Falling, &mut PhysicsPosition, &mut PrevPhysicsPosition)>,
-) {
-    let delta_time = time_fixed.delta_secs();
-    if let Ok((falling, mut current_pos, mut prev_pos)) = query.single_mut() {
-        prev_pos.0 = current_pos.0;
-
-        let direction = falling.end_position - current_pos.0;
+fn simulate_gravity(time: Res<Time>, mut query: Query<(&Falling, &mut Transform)>) {
+    if let Ok((falling, mut transform)) = query.single_mut() {
+        let delta_time = time.delta_secs().min(0.003);
+        let direction = falling.end_position - transform.translation;
         let distance = direction.length();
         let step = GRAVITY * delta_time;
-
         if distance > step {
-            current_pos.0 += direction.normalize() * step;
+            transform.translation += direction.normalize() * step;
         } else {
-            current_pos.0 = falling.end_position;
+            transform.translation = falling.end_position;
         }
-    }
-}
-
-fn interpolate_visual(
-    time_fixed: Res<Time<Fixed>>,
-    mut query: Query<(
-        &Falling,
-        &PhysicsPosition,
-        &PrevPhysicsPosition,
-        &mut Transform,
-    )>,
-) {
-    let alpha = time_fixed.overstep_fraction();
-
-    if let Ok((_falling, current_pos, prev_pos, mut transform)) = query.single_mut() {
-        transform.translation = prev_pos.0.lerp(current_pos.0, alpha);
     }
 }
 
@@ -325,9 +281,7 @@ fn is_reached(
 ) {
     if let Ok((entity, falling, transform)) = query.single() {
         if transform.translation == falling.end_position {
-            commands
-                .entity(entity)
-                .remove::<(PhysicsPosition, PrevPhysicsPosition, Falling)>();
+            commands.entity(entity).remove::<Falling>();
             next_state.set(GameState::IsGameOver);
         }
     }

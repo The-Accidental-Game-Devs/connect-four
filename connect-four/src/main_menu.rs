@@ -130,15 +130,9 @@ fn setup(mut commands: Commands, assets: Res<Assets>, game_difficulty: Res<GameD
 
 fn get_difficulty_str(difficulty: &Difficulty) -> &str {
     match difficulty {
-        Difficulty::Easy => {
-            "Easy"
-        }
-        Difficulty::Normal => {
-            "Normal"
-        }
-        Difficulty::Hard => {
-            "Hard"
-        }
+        Difficulty::Easy => "Easy",
+        Difficulty::Normal => "Normal",
+        Difficulty::Hard => "Hard",
     }
 }
 
