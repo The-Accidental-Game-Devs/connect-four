@@ -1,5 +1,5 @@
 use crate::assets::Assets;
-use crate::game_result::{GameResult, Result};
+use crate::game_result::{GameResult, GameResultResource};
 use crate::states::{AppState, GameState};
 use crate::ui_settings::*;
 use bevy::prelude::*;
@@ -209,14 +209,14 @@ fn setup(mut commands: Commands, assets: Res<Assets>) {
 
 fn update_game_over_text(
     mut query: Query<(&mut Text, &GameOverText)>,
-    game_result: Res<GameResult>,
+    game_result_resource: Res<GameResultResource>,
 ) {
     if let Ok((mut text, _game_over_text)) = query.single_mut() {
-        let game_over_text = match game_result.result {
-            Result::PlayerWon => "Player won!",
-            Result::BotWon => "Bot won!",
-            Result::Draw => "Draw",
-            Result::Unknow => "Undefined",
+        let game_over_text = match game_result_resource.game_result {
+            GameResult::PlayerWon => "Player won!",
+            GameResult::BotWon => "Bot won!",
+            GameResult::Draw => "Draw",
+            GameResult::Unknow => "Undefined",
         };
         *text = Text::new(game_over_text);
     }

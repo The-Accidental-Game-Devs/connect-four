@@ -1,6 +1,6 @@
 use crate::assets::Assets;
-use crate::game_difficulty::*;
-use crate::game_result::{GameResult, Result};
+use crate::game_difficulty::{GameDifficulty, GameDifficultyResource};
+use crate::game_result::{GameResult, GameResultResource};
 use crate::settings::*;
 use crate::states::{AppState, GameState};
 use bevy::prelude::*;
@@ -107,8 +107,8 @@ fn setup(
         bot_col: 3,
         player_turn: true,
     });
-    commands.insert_resource(GameResult {
-        result: Result::Unknow,
+    commands.insert_resource(GameResultResource {
+        game_result: GameResult::Unknow,
     });
     commands.spawn((
         Sprite::from_image(assets.board.clone()),
@@ -188,14 +188,14 @@ fn hide_active_piece(mut query: Query<&mut Visibility, With<ActivePiece>>) {
 
 fn handle_bot_input(
     mut game_data: ResMut<GameData>,
-    mut game_result: ResMut<GameResult>,
-    game_difficulty: Res<GameDifficulty>,
+    mut game_result_resource: ResMut<GameResultResource>,
+    game_difficulty_resource: Res<GameDifficultyResource>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
-    let depth = match game_difficulty.difficulty {
-        Difficulty::Easy => 4,
-        Difficulty::Normal => 8,
-        Difficulty::Hard => 12,
+    let depth = match game_difficulty_resource.game_difficulty {
+        GameDifficulty::Easy => 4,
+        GameDifficulty::Normal => 8,
+        GameDifficulty::Hard => 12,
     };
     let Some(best_move) = find_best_move(
         game_data.game_board,
@@ -203,7 +203,7 @@ fn handle_bot_input(
         game_data.bot_board,
         depth,
     ) else {
-        game_result.result = Result::Unknow;
+        game_result_resource.game_result = GameResult::Unknow;
         next_state.set(GameState::GameOver);
         return;
     };
@@ -214,7 +214,7 @@ fn handle_bot_input(
 fn drop_piece(
     mut commands: Commands,
     mut game_data: ResMut<GameData>,
-    mut game_result: ResMut<GameResult>,
+    mut game_result_resource: ResMut<GameResultResource>,
     assets: Res<Assets>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
@@ -229,7 +229,7 @@ fn drop_piece(
     game_data.game_board |= next_row;
 
     let Some((row, col)) = indices_from_bitmask(next_row) else {
-        game_result.result = Result::Unknow;
+        game_result_resource.game_result = GameResult::Unknow;
         next_state.set(GameState::GameOver);
         return;
     };
@@ -289,23 +289,23 @@ fn is_reached(
 
 fn check_is_game_over(
     game_data: Res<GameData>,
-    mut game_result: ResMut<GameResult>,
+    mut game_result_resource: ResMut<GameResultResource>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
     if has_won(game_data.player_board) {
-        game_result.result = Result::PlayerWon;
+        game_result_resource.game_result = GameResult::PlayerWon;
         next_state.set(GameState::GameOver);
         return;
     }
 
     if has_won(game_data.bot_board) {
-        game_result.result = Result::BotWon;
+        game_result_resource.game_result = GameResult::BotWon;
         next_state.set(GameState::GameOver);
         return;
     }
 
     if is_board_full(game_data.game_board) {
-        game_result.result = Result::Draw;
+        game_result_resource.game_result = GameResult::Draw;
         next_state.set(GameState::GameOver);
         return;
     }
@@ -326,18 +326,18 @@ fn handle_replay(
     mut commands: Commands,
     query: Query<Entity, With<Piece>>,
     game_data: Res<GameData>,
-    game_result: Res<GameResult>,
+    game_result_resource: Res<GameResultResource>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
     for piece in query {
         commands.entity(piece).despawn();
     }
 
-    let player_turn = match game_result.result {
-        Result::PlayerWon => false,
-        Result::BotWon => true,
-        Result::Draw => game_data.player_turn,
-        Result::Unknow => true,
+    let player_turn = match game_result_resource.game_result {
+        GameResult::PlayerWon => false,
+        GameResult::BotWon => true,
+        GameResult::Draw => game_data.player_turn,
+        GameResult::Unknow => true,
     };
 
     commands.insert_resource(GameData {
@@ -348,8 +348,8 @@ fn handle_replay(
         bot_col: 3,
         player_turn: player_turn,
     });
-    commands.insert_resource(GameResult {
-        result: Result::Unknow,
+    commands.insert_resource(GameResultResource {
+        game_result: GameResult::Unknow,
     });
 
     next_state.set(GameState::WhoTurn);

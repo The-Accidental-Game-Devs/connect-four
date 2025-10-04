@@ -1,5 +1,5 @@
 use crate::assets::Assets;
-use crate::game_difficulty::*;
+use crate::game_difficulty::{GameDifficulty, GameDifficultyResource};
 use crate::states::AppState;
 use crate::ui_settings::*;
 use bevy::prelude::*;
@@ -35,7 +35,11 @@ impl Plugin for MainMenuPlugin {
     }
 }
 
-fn setup(mut commands: Commands, assets: Res<Assets>, game_difficulty: Res<GameDifficulty>) {
+fn setup(
+    mut commands: Commands,
+    assets: Res<Assets>,
+    game_difficulty_resource: Res<GameDifficultyResource>,
+) {
     commands
         .spawn((
             Node {
@@ -116,7 +120,9 @@ fn setup(mut commands: Commands, assets: Res<Assets>, game_difficulty: Res<GameD
                 .with_children(|play_button| {
                     play_button.spawn((
                         DifficultyText {},
-                        Text::new(get_difficulty_str(&game_difficulty.difficulty)),
+                        Text::new(get_difficulty_str(
+                            &game_difficulty_resource.game_difficulty,
+                        )),
                         TextColor(Color::WHITE),
                         TextFont {
                             font: assets.font.clone(),
@@ -128,11 +134,11 @@ fn setup(mut commands: Commands, assets: Res<Assets>, game_difficulty: Res<GameD
         });
 }
 
-fn get_difficulty_str(difficulty: &Difficulty) -> &str {
-    match difficulty {
-        Difficulty::Easy => "Easy",
-        Difficulty::Normal => "Normal",
-        Difficulty::Hard => "Hard",
+fn get_difficulty_str(game_difficulty: &GameDifficulty) -> &str {
+    match game_difficulty {
+        GameDifficulty::Easy => "Easy",
+        GameDifficulty::Normal => "Normal",
+        GameDifficulty::Hard => "Hard",
     }
 }
 
@@ -150,38 +156,38 @@ fn handle_play_button(
     }
 }
 
-fn next_difficulty(mut game_difficulty: ResMut<GameDifficulty>) -> ResMut<GameDifficulty> {
-    match game_difficulty.difficulty {
-        Difficulty::Easy => {
-            game_difficulty.difficulty = Difficulty::Normal;
+fn next_difficulty(mut game_difficulty_resource: ResMut<GameDifficultyResource>) {
+    match game_difficulty_resource.game_difficulty {
+        GameDifficulty::Easy => {
+            game_difficulty_resource.game_difficulty = GameDifficulty::Normal;
         }
-        Difficulty::Normal => {
-            game_difficulty.difficulty = Difficulty::Hard;
+        GameDifficulty::Normal => {
+            game_difficulty_resource.game_difficulty = GameDifficulty::Hard;
         }
-        Difficulty::Hard => {
-            game_difficulty.difficulty = Difficulty::Easy;
+        GameDifficulty::Hard => {
+            game_difficulty_resource.game_difficulty = GameDifficulty::Easy;
         }
     }
-
-    game_difficulty
 }
 
 fn update_difficulty_text(
-    game_difficulty: Res<GameDifficulty>,
+    game_difficulty_resource: Res<GameDifficultyResource>,
     mut query: Query<(&mut Text, &DifficultyText)>,
 ) {
-    if !game_difficulty.is_changed() {
+    if !game_difficulty_resource.is_changed() {
         return;
     }
 
     if let Ok((mut text, _difficulty_text)) = query.single_mut() {
-        *text = Text::new(get_difficulty_str(&game_difficulty.difficulty));
+        *text = Text::new(get_difficulty_str(
+            &game_difficulty_resource.game_difficulty,
+        ));
     }
 }
 
 fn handle_difficulty_button(
     mut query: Query<(&Interaction, &mut DifficultyButton)>,
-    game_difficulty: ResMut<GameDifficulty>,
+    game_difficulty_resource: ResMut<GameDifficultyResource>,
 ) {
     if let Ok((interaction, mut difficulty_button)) = query.single_mut() {
         match *interaction {
@@ -190,7 +196,7 @@ fn handle_difficulty_button(
             }
             Interaction::Hovered => {
                 if difficulty_button.pressed {
-                    next_difficulty(game_difficulty);
+                    next_difficulty(game_difficulty_resource);
                     difficulty_button.pressed = false;
                 }
             }

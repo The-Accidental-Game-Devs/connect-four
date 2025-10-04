@@ -1,7 +1,7 @@
 use bevy::prelude::Resource;
 
 #[derive(PartialEq)]
-pub enum Result {
+pub enum GameResult {
     PlayerWon,
     BotWon,
     Draw,
@@ -9,6 +9,6 @@ pub enum Result {
 }
 
 #[derive(Resource)]
-pub struct GameResult {
-    pub result: Result,
+pub struct GameResultResource {
+    pub game_result: GameResult,
 }
